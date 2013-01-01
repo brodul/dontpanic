@@ -128,7 +128,7 @@ class Parser(object):
 
 class DomainChecker(object):
 
-    def __init__(self, timeout=10, agent="brodul/1.0"):
+    def __init__(self, timeout=10, agent="dontpanic/1.0"):
         self.timeout = timeout
         self.agent = agent
         self.opener = urllib2.build_opener()
