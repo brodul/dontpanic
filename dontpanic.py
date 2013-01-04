@@ -161,13 +161,10 @@ class DomainChecker(object):
             our_shit = True
         else:
             try:
-                import dns.resolver
                 answers = dns.resolver.query(domain, 'A')
                 for answer in answers:
                     if answer.address in our_ip_list:
                         our_shit = True
-            except ImportError:
-                print 'You need to install python-pythondns package.'
             except:
                 pass
 
@@ -229,6 +226,12 @@ if __name__ == "__main__":
         apache_domains = p.parse_apache_dir(args.apache_dir)
 
     domains = nginx_domains + apache_domains
+
+    if args.ips:
+        try:
+            import dns.resolver
+        except ImportError:
+            print 'You need to install python-pythondns package.'
 
     if not domains:
         print 'No domains found !'
