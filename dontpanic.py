@@ -38,12 +38,14 @@ def get_logger(logdir, debug):
     else:
         logger.setLevel(logging.INFO)
 
-    logfile = logging.handlers.RotatingFileHandler(
+    logfile_handler = logging.handlers.RotatingFileHandler(
         os.path.join(logdir, logname)
     )
+    stream_handler = logging.StreamHandler()
 
     #logfile.setFormatter(formatter)
-    logger.addHandler(logfile)
+    logger.addHandler(logfile_handler)
+    logger.addHandler(stream_handler)
 
     logger.debug("Logger initialized ... ")
 
