@@ -17,3 +17,6 @@ dontpanic.log
 # Packages
 *.egg
 *.egg-info
+
+# no build docs in repo
+/doc/build
