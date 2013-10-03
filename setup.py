@@ -2,6 +2,11 @@ from setuptools import setup, find_packages
 
 version = '0.1'
 
+docs_extras = [
+    'Sphinx',
+    'docutils',
+    ]
+
 setup(name='dontpanic',
       version=version,
       description="Script that checks all uncommented domains"
@@ -21,6 +26,9 @@ setup(name='dontpanic',
       install_requires=[
           "dnspython",
       ],
+      extras_require={
+          "doc": docs_extras,
+      },
       entry_points="""
       # -*- Entry points: -*-
       """,
