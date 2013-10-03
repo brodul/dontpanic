@@ -17,6 +17,7 @@ import logging.handlers
 import os
 import sys
 import urllib2
+import socket
 
 import dns.resolver
 
@@ -152,7 +153,7 @@ class DomainChecker(object):
         return request
 
     def get_code(self, url):
-        response = self.opener.open(self._build_request(url))
+        response = self.opener.open(self._build_request(url), timeout=self.timeout)
         if hasattr(response, 'status'):
             return response.status
         else:
@@ -188,7 +189,16 @@ class DomainChecker(object):
                 logger.info("%s retuned %s -- BAD", domain, e.code)
             else:
                 logger.info("%s retuned %s -- BAD (Not our problem hosted at %s)", domain, e.code, answer.address)
-            code = e.code
+        except urllib2.URLError, e:
+            if our_shit:
+                logger.info("%s retuned %s -- BAD", domain, e.reason)
+            else:
+                logger.info("%s retuned %s -- BAD (Not our problem hosted at %s)", domain, e.reason, answer.address)
+        except socket.timeout, e:
+            if our_shit:
+                logger.info("%s retuned %s -- BAD", domain, e)
+            else:
+                logger.info("%s retuned %s -- BAD (Not our problem hosted at %s)", domain, e, answer.address)
 
         if code in (200, 301, 302):
 
