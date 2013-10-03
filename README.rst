@@ -9,7 +9,7 @@ Then run following commands::
 
     virtualenv --no-site-packages .
     source bin/activate
-    python setup.py develop
+    python setup.py dev
 
 Working on it
 +++++++++++++
