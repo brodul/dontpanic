@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 """
-
 Script that checks all uncommented domains in a nginx or apache config directory.
 
 The domain is checked for the HTTP return code and
