@@ -10,6 +10,7 @@ if the domain is hosted on your server or not.
 """
 
 
+import collections
 from optparse import OptionParser
 import logging
 import logging.handlers
@@ -17,9 +18,7 @@ import os
 import sys
 import urllib2
 
-if __name__ != '__main__':
-    import dns.resolver
-
+import dns.resolver
 
 def get_logger(logdir, debug):
     """docstring for get_logger"""
@@ -46,7 +45,7 @@ def get_logger(logdir, debug):
     logger.addHandler(logfile_handler)
     logger.addHandler(stream_handler)
 
-    logger.debug("Logger initialized ... ")
+    logger.debug("Dontpanic script started ...")
 
     return logger
 
@@ -75,55 +74,63 @@ class DefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
 
 class Parser(object):
 
-    def parse_nginx_conf(self, nginx_file):
-        """
-
-        """
-        domains = []
+    def parser_nginx_conf(self, nginx_file):
         logger.debug("Starting parsing nginx conf file: %s", nginx_file)
         with open(nginx_file) as conf:
-            for line in conf:
+            for num, line in enumerate(conf, 1):
                 if "server_name " in line and "#" not in line:
                     line_domains = line.strip().replace("server_name ", "")
                     line_domains = line_domains.replace(";", "").split()
-                    domains.extend(line_domains)
-        logger.debug("Added %s domains from nginx conf file: %s", domains, nginx_file)
+                    for domain in line_domains:
+                        yield nginx_file, num, domain
         logger.debug("Parsing nginx conf: %s completed\n", nginx_file)
-        return domains
 
-    def parse_apache_conf(self, apache_file):
-        """
-        """
-        domains = []
+    def parser_apache_conf(self, apache_file):
         logger.debug("Starting parsing apache conf file: %s", apache_file)
         with open(apache_file) as conf:
-            for line in conf:
+            for num, line in enumerate(conf, 1):
                 if "ServerAlias" in line and "#" not in line:
                     line_domains = line.strip().replace("ServerAlias", "").split()
-                    domains.extend(line_domains)
-        logger.debug("Added %s domains from apache conf file: %s", domains, apache_file)
+                    for domain in line_domains:
+                        yield apache_file, num, domain.split(":")[0]
         logger.debug("Parsing apache conf completed\n")
-        return domains
 
-    def _file_list(self, directory):
-        """
-        """
+    def _file_list(self, directory, excluded=""):
         for dirname, dirnames, filenames in os.walk(directory):
             for filename in filenames:
-                yield os.path.join(dirname, filename)
+                if filename not in excluded:
+                    yield os.path.join(dirname, filename)
 
+
+    def _tree(self):
+        """
+        This is a self expanding recursive dict superb for dict tree building.
+
+        http://stackoverflow.com/questions/3009935/looking-for-a-good-python-tree-data-structure
+        """
+        return collections.defaultdict(self._tree)
+
+    # DRY
     def parse_nginx_dir(self, nginx_dir):
         """docstring for parse_nginx_dir"""
-        domains = []
+        domains = self._tree()
         for conf in self._file_list(nginx_dir):
-            domains += self.parse_nginx_conf(conf)
+            for file_, num, domain in self.parser_nginx_conf(conf):
+                if not file_ in domains[domain]:
+                    domains[domain]["nginx"]["config_file"][file_]["line_numbers"] = []
+                domains[domain]["nginx"]["config_file"][file_]["line_numbers"].append(num)
+                logger.info("Added %s domain from nginx conf file: %s in line %s", domain, file_, num)
         return domains
 
     def parse_apache_dir(self, apache_dir):
         """docstring for parse_apache_dir"""
-        domains = []
+        domains = self._tree()
         for conf in self._file_list(apache_dir):
-            domains += self.parse_apache_conf(conf)
+            for file_, num, domain in self.parser_apache_conf(conf):
+                if not file_ in domains[domain]:
+                    domains[domain]["apache"]["config_file"][file_]["line_numbers"] = []
+                domains[domain]["apache"]["config_file"][file_]["line_numbers"].append(num)
+                logger.info("Added %s domain from apache conf file: %s in line %s", domain, file_, num)
         return domains
 
 
@@ -164,8 +171,15 @@ class DomainChecker(object):
                 for answer in answers:
                     if answer.address in our_ip_list:
                         our_shit = True
-            except:
-                pass
+            except dns.resolver.NoNameservers:
+                logger.info("%s -- SUPER BAD (domain not registered or no NS records)", domain)
+                return foolist
+            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+                logger.info("%s -- SUPER BAD (name server found but no A record)", domain)
+                return foolist
+            except dns.exception.Timeout:
+                logger.info("%s -- SUPER BAD (NS timeout)", domain)
+                return foolist
 
         try:
             code = self.get_code(domain)
@@ -175,8 +189,6 @@ class DomainChecker(object):
             else:
                 logger.info("%s retuned %s -- BAD (Not our problem hosted at %s)", domain, e.code, answer.address)
             code = e.code
-        except urllib2.URLError, e:
-                logger.info("%s %s -- SUPER BAD (domain not registered or no DNS record)", domain, e.reason)
 
         if code in (200, 301, 302):
 
@@ -187,7 +199,7 @@ class DomainChecker(object):
             oklist.append(domain)
         else:
             foolist.append(domain)
-        return  foolist
+        return foolist
 
 
 if __name__ == "__main__":
@@ -216,15 +228,13 @@ if __name__ == "__main__":
     logger.info('Starting ...')
 
     p = Parser()
-    dc = DomainChecker()
 
-    nginx_domains, apache_domains = [], []
+    nginx_domains, apache_domains = {}, {}
     if getattr(args, 'nginx_dir') is not None:
         nginx_domains = p.parse_nginx_dir(args.nginx_dir)
     if getattr(args, 'apache_dir') is not None:
         apache_domains = p.parse_apache_dir(args.apache_dir)
 
-    domains = nginx_domains + apache_domains
 
     if args.ips:
         try:
@@ -232,14 +242,17 @@ if __name__ == "__main__":
         except ImportError:
             print 'You need to install python-pythondns package.'
 
-    if not domains:
+    if not (nginx_domains or apache_domains):
         print 'No domains found !'
         logger.info('No domains found !')
-        sys.exit(0)
+        sys.exit(1)
 
     logger.info("Start checking the domains ...")
 
-    for domain in domains:
-        dc.check_domain(domain, args.ips)
+    domains = nginx_domains.keys() + apache_domains.keys()
+    if args.ips:
+        dc = DomainChecker()
+        for domain in domains:
+            dc.check_domain(domain, args.ips)
 
     logger.info("Ending ...\n\n\n")
