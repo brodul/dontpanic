@@ -260,6 +260,7 @@ if __name__ == "__main__":
     logger.info("Start checking the domains ...")
 
     domains = nginx_domains.keys() + apache_domains.keys()
+    logger.info("Total numbers of domains %s ...", len(domains))
     if args.ips:
         dc = DomainChecker()
         for domain in domains:
