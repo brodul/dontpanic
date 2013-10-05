@@ -7,7 +7,7 @@
 /data
 
 # We dont want the default path of the logs to be commited by excident
-dontpanic.log
+*.log
 
 # ignore virtual env stuff 
 /bin
