@@ -113,8 +113,8 @@ class Parser(object):
         for conf in self._file_list(nginx_dir):
             for file_, num, domain in self.parser_nginx_conf(conf):
                 if not file_ in domains[domain]:
-                    domains[domain]["nginx"]["config_file"][file_]["line_numbers"] = []
-                domains[domain]["nginx"]["config_file"][file_]["line_numbers"].append(num)
+                    domains[domain]["config_files"]["nginx"][file_]["line_numbers"] = []
+                domains[domain]["config_files"]["nginx"][file_]["line_numbers"].append(num)
                 logger.info("Added %s domain from nginx conf file: %s in line %s", domain, file_, num)
         return domains
 
@@ -124,8 +124,8 @@ class Parser(object):
         for conf in self._file_list(apache_dir):
             for file_, num, domain in self.parser_apache_conf(conf):
                 if not file_ in domains[domain]:
-                    domains[domain]["apache"]["config_file"][file_]["line_numbers"] = []
-                domains[domain]["apache"]["config_file"][file_]["line_numbers"].append(num)
+                    domains[domain]["config_files"]["apache"][file_]["line_numbers"] = []
+                domains[domain]["config_files"]["apache"][file_]["line_numbers"].append(num)
                 logger.info("Added %s domain from apache conf file: %s in line %s", domain, file_, num)
         return domains
 
