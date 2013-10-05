@@ -10,7 +10,6 @@ if the domain is hosted on your server or not.
 """
 
 
-import collections
 from optparse import OptionParser
 import logging
 import logging.handlers
@@ -72,6 +71,11 @@ class DefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
         result.status = code
         return result
 
+class default_dict(dict):
+    
+    def __missing__(self, key):
+        self[key] = default_dict()
+        return self[key]
 
 class Parser(object):
 
@@ -102,19 +106,10 @@ class Parser(object):
                 if filename not in excluded:
                     yield os.path.join(dirname, filename)
 
-
-    def _tree(self):
-        """
-        This is a self expanding recursive dict superb for dict tree building.
-
-        http://stackoverflow.com/questions/3009935/looking-for-a-good-python-tree-data-structure
-        """
-        return collections.defaultdict(self._tree)
-
     # DRY
     def parse_nginx_dir(self, nginx_dir):
         """docstring for parse_nginx_dir"""
-        domains = self._tree()
+        domains = default_dict()
         for conf in self._file_list(nginx_dir):
             for file_, num, domain in self.parser_nginx_conf(conf):
                 if not file_ in domains[domain]:
@@ -125,7 +120,7 @@ class Parser(object):
 
     def parse_apache_dir(self, apache_dir):
         """docstring for parse_apache_dir"""
-        domains = self._tree()
+        domains = default_dict()
         for conf in self._file_list(apache_dir):
             for file_, num, domain in self.parser_apache_conf(conf):
                 if not file_ in domains[domain]:
