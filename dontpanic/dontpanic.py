@@ -21,15 +21,13 @@ import socket
 import dns.resolver
 
 def get_logger(logdir, debug):
-    """docstring for get_logger"""
+    """Logger for the dontpanic script-"""
     logname = 'dontpanic.log'
 
     logdir = logdir or '.'
     debug = debug or False
 
     logger = logging.getLogger()
-    #formatter = logging.Formatter(
-        #'%(asctime)s - %(levelname)s - %(message)s')
 
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -41,7 +39,6 @@ def get_logger(logdir, debug):
     )
     stream_handler = logging.StreamHandler()
 
-    #logfile.setFormatter(formatter)
     logger.addHandler(logfile_handler)
     logger.addHandler(stream_handler)
 
