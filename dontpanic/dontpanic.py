@@ -1,15 +1,15 @@
 #! /usr/bin/env python
 """
-Script that checks all uncommented domains in a nginx or apache config directory.
+Script lists all uncommented domains/subdomains in a nginx or apache config directory.
 
-The domain is checked for the HTTP return code and
-if the there is a DNS record for the domain.
+Domains/subdomains can be checked for current status. 
+
+The domain is checked if the there is a DNS record for the domain and
+(if possible) for the HTTP return code.
 
 Optionaly you can provide the ip of you server and the script will check
 if the domain is hosted on your server or not.
 """
-
-
 from optparse import OptionParser
 import logging
 import logging.handlers
@@ -20,14 +20,18 @@ import socket
 
 import dns.resolver
 
-def get_logger(logdir, debug):
-    """Logger for the dontpanic script-"""
+
+logger = logging.getLogger(__name__)
+logger.setLevel('CRITICAL')
+
+def get_logger(logdir=None, debug=False):
+    """Return a logger for the dontpanic script."""
     logname = 'dontpanic.log'
 
     logdir = logdir or '.'
     debug = debug or False
 
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -68,63 +72,83 @@ class DefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
         result.status = code
         return result
 
+
 class default_dict(dict):
+    """A dictionary that creates a dictionary for missing key.
+
+    This dictionary extension makes writting dict trees more simple.
+
+    """
     
     def __missing__(self, key):
         self[key] = default_dict()
         return self[key]
 
+
 class Parser(object):
 
-    def parser_nginx_conf(self, nginx_file):
-        logger.debug("Starting parsing nginx conf file: %s", nginx_file)
-        with open(nginx_file) as conf:
-            for num, line in enumerate(conf, 1):
-                if "server_name " in line and not line.strip().startswith('#'):
-                    line_domains = line.strip().replace("server_name ", "")
-                    line_domains = line_domains.replace(";", "").split()
-                    for domain in line_domains:
-                        yield nginx_file, num, domain
-        logger.debug("Parsing nginx conf: %s completed\n", nginx_file)
-
-    def parser_apache_conf(self, apache_file):
-        logger.debug("Starting parsing apache conf file: %s", apache_file)
-        with open(apache_file) as conf:
-            for num, line in enumerate(conf, 1):
-                if "ServerAlias" in line and not line.strip().startswith('#'):
-                    line_domains = line.strip().replace("ServerAlias", "").split()
-                    for domain in line_domains:
-                        yield apache_file, num, domain.split(":")[0]
-        logger.debug("Parsing apache conf completed\n")
-
     def _file_list(self, directory, excluded=""):
+        """Yield all files in a directory recursive.
+    
+        Optional a string files to exclude can be set.    
+
+        """
         for dirname, dirnames, filenames in os.walk(directory):
             for filename in filenames:
                 if filename not in excluded:
                     yield os.path.join(dirname, filename)
+    
+    def get_line(self, conf_file):
+        """ Yield line by line of a file with its line number and filename"""
+        logger.debug("Starting parsing %s conf file: %s", self.deamon, conf_file)
+        with open(conf_file) as conf:
+            for num, line in enumerate(conf, 1):
+                yield conf_file, num, line
+        logger.debug("Parsing %s conf: %s completed\n", self.deamon, conf_file)
 
-    # DRY
-    def parse_nginx_dir(self, nginx_dir):
-        """docstring for parse_nginx_dir"""
-        domains = default_dict()
-        for conf in self._file_list(nginx_dir):
-            for file_, num, domain in self.parser_nginx_conf(conf):
-                if not file_ in domains[domain]:
-                    domains[domain]["config_files"]["nginx"][file_]["line_numbers"] = []
-                domains[domain]["config_files"]["nginx"][file_]["line_numbers"].append(num)
-                logger.info("Added %s domain from nginx conf file: %s in line %s", domain, file_, num)
+    def parser(self):
+        raise NotImplementedError("Subclasses should implement this !")
+
+    def create_tree_from_file(self, conf, tree=None):
+        domains = tree or default_dict()
+        for conf, num, line in self.get_line(conf):
+            for domain in self.parser(line):
+                if not conf in domains[domain]:
+                    domains[domain]["config_files"][self.deamon][conf]["line_numbers"] = []
+                domains[domain]["config_files"][self.deamon][conf]["line_numbers"].append(num)
+                logger.info("Added %s domain from %s conf file: %s in line %s", self.deamon, domain, conf, num)
         return domains
 
-    def parse_apache_dir(self, apache_dir):
-        """docstring for parse_apache_dir"""
+    def create_tree_from_dir(self, directory):
         domains = default_dict()
-        for conf in self._file_list(apache_dir):
-            for file_, num, domain in self.parser_apache_conf(conf):
-                if not file_ in domains[domain]:
-                    domains[domain]["config_files"]["apache"][file_]["line_numbers"] = []
-                domains[domain]["config_files"]["apache"][file_]["line_numbers"].append(num)
-                logger.info("Added %s domain from apache conf file: %s in line %s", domain, file_, num)
+        for conf in self._file_list(directory):
+            domains = self.create_tree_from_file(conf, domains)
         return domains
+
+
+class NginxParser(Parser):
+
+    def __init__(self):
+        self.deamon = "nginx"
+
+    def parser(self, line):
+        if "server_name " in line and not line.strip().startswith('#'):
+            line_domains = line.strip().replace("server_name ", "")
+            line_domains = line_domains.replace(";", "").split()
+            for domain in line_domains:
+                yield domain
+
+
+class ApacheParser(Parser):
+
+    def __init__(self):
+        self.deamon = "apache"
+
+    def parser(self, line):
+        if "ServerAlias" in line and not line.strip().startswith('#'):
+            line_domains = line.strip().replace("ServerAlias", "").split()
+            for domain in line_domains:
+                yield domain.split(":")[0]
 
 
 class DomainChecker(object):
