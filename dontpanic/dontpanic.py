@@ -83,7 +83,7 @@ class Parser(object):
         logger.debug("Starting parsing nginx conf file: %s", nginx_file)
         with open(nginx_file) as conf:
             for num, line in enumerate(conf, 1):
-                if "server_name " in line and "#" not in line:
+                if "server_name " in line and not line.strip().startswith('#'):
                     line_domains = line.strip().replace("server_name ", "")
                     line_domains = line_domains.replace(";", "").split()
                     for domain in line_domains:
@@ -94,7 +94,7 @@ class Parser(object):
         logger.debug("Starting parsing apache conf file: %s", apache_file)
         with open(apache_file) as conf:
             for num, line in enumerate(conf, 1):
-                if "ServerAlias" in line and "#" not in line:
+                if "ServerAlias" in line and not line.strip().startswith('#'):
                     line_domains = line.strip().replace("ServerAlias", "").split()
                     for domain in line_domains:
                         yield apache_file, num, domain.split(":")[0]
