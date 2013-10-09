@@ -1,7 +1,6 @@
 import os
 
-from dontpanic import default_dict
-from log import logger
+from utils import default_dict
 
 
 class Parser(object):
