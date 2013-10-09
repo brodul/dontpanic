@@ -22,7 +22,9 @@ import dns.resolver
 
 
 logger = logging.getLogger(__name__)
+# Don't log (in python 2.7 we could set a NullHandler)
 logger.setLevel('CRITICAL')
+
 
 def get_logger(logdir=None, debug=False):
     """Return a logger for the dontpanic script."""
@@ -137,7 +139,7 @@ class NginxParser(Parser):
             line_domains = line_domains.replace(";", "").split()
             for domain in line_domains:
                 yield domain
-
+ 
 
 class ApacheParser(Parser):
 
@@ -253,14 +255,14 @@ if __name__ == "__main__":
 
     logger.info('Starting ...')
 
-    p = Parser()
+    nginx_parser = NginxParser()
+    apache_parser = ApacheParser()
 
     nginx_domains, apache_domains = {}, {}
     if getattr(args, 'nginx_dir') is not None:
-        nginx_domains = p.parse_nginx_dir(args.nginx_dir)
+        nginx_domains = nginx_parser.create_tree_from_dir(args.nginx_dir)
     if getattr(args, 'apache_dir') is not None:
-        apache_domains = p.parse_apache_dir(args.apache_dir)
-
+        apache_domains = apache_parser.create_tree_from_dir(args.apache_dir)
 
     if args.ips:
         try:
@@ -282,4 +284,4 @@ if __name__ == "__main__":
         for domain in domains:
             dc.check_domain(domain, args.ips)
 
-    logger.info("Ending ...\n\n\n")
+    logger.info("Ending ...\n")
