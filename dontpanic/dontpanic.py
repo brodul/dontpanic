@@ -10,7 +10,7 @@ The domain is checked if the there is a DNS record for the domain and
 Optionaly you can provide the ip of you server and the script will check
 if the domain is hosted on your server or not.
 """
-from optparse import OptionParser
+import argparse
 import logging
 import logging.handlers
 import os
@@ -232,26 +232,27 @@ class DomainChecker(object):
 
 if __name__ == "__main__":
 
-    parser = OptionParser()
+    parser = argparse.ArgumentParser()
 
-    parser.usage = "%prog [options]" + __doc__
-
-    parser.add_option("-n", "--nginx-conf-dir", dest="nginx_dir",
+    parser.add_argument("-n", "--nginx-conf-dir", dest="nginx_dir",
                       help="directory with nginx conf files", metavar="NDIR")
-    parser.add_option("-a", "--apache-conf-dir", dest="apache_dir",
+    parser.add_argument("-a", "--apache-conf-dir", dest="apache_dir",
                       help="directory with apache conf files", metavar="ADIR")
-    parser.add_option("-l", "--log-dir", dest="logdir",
+    parser.add_argument("-l", "--log-dir", dest="logdir",
                       help="write report to LOGDIR", metavar="LOGDIR")
-    parser.add_option("-d", "--debug",
+    parser.add_argument("-d", "--debug",
                       dest="debug", default=False,
                       help="debug mode")
-    parser.add_option("-i", "--ips",
+    parser.add_argument("-i", "--ips",
                       dest="ips", default=None,
                       help="ip or ips of our server (will activate dns resolver)")
 
-    args = parser.parse_args()[0]
+    args = parser.parse_args()
 
     logger = get_logger(args.logdir, args.debug)
+
+    if not (args.nginx_dir or args.apache_dir):
+        parser.error('No action requested, add -n or -a.')
 
     logger.info('Starting ...')
 
