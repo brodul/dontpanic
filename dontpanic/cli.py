@@ -11,6 +11,7 @@ Optionaly you can provide the ip of you server and the script will check
 if the domain is hosted on your server or not.
 """
 import argparse
+import sys
 
 from log import get_logger
 from parse import NginxParser
@@ -18,7 +19,28 @@ from parse import ApacheParser
 from domain import DomainChecker
 
 
-def main(args):
+parser = argparse.ArgumentParser()
+
+
+def main(args=sys.argv[1:]):
+
+    parser.add_argument("-n", "--nginx-conf-dir", dest="nginx_dir",
+                      help="directory with nginx conf files", metavar="NDIR")
+    parser.add_argument("-a", "--apache-conf-dir", dest="apache_dir",
+                      help="directory with apache conf files", metavar="ADIR")
+    parser.add_argument("-l", "--log-dir", dest="logdir",
+                      help="write report to LOGDIR", metavar="LOGDIR")
+    parser.add_argument("-d", "--debug",
+                      dest="debug", default=False,
+                      help="debug mode")
+    parser.add_argument("-i", "--ips",
+                      dest="ips", default=None,
+                      help="ip or ips of our server (will activate dns resolver)")
+
+    args = parser.parse_args(args=args)
+
+    if not (args.nginx_dir or args.apache_dir):
+        parser.error('No action requested, add -n or -a.')
 
     logger = get_logger(args.logdir, args.debug)
 
@@ -46,24 +68,4 @@ def main(args):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("-n", "--nginx-conf-dir", dest="nginx_dir",
-                      help="directory with nginx conf files", metavar="NDIR")
-    parser.add_argument("-a", "--apache-conf-dir", dest="apache_dir",
-                      help="directory with apache conf files", metavar="ADIR")
-    parser.add_argument("-l", "--log-dir", dest="logdir",
-                      help="write report to LOGDIR", metavar="LOGDIR")
-    parser.add_argument("-d", "--debug",
-                      dest="debug", default=False,
-                      help="debug mode")
-    parser.add_argument("-i", "--ips",
-                      dest="ips", default=None,
-                      help="ip or ips of our server (will activate dns resolver)")
-
-    args = parser.parse_args()
-
-    if not (args.nginx_dir or args.apache_dir):
-        parser.error('No action requested, add -n or -a.')
-
-    main(args)
+    main()
