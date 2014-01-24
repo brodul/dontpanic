@@ -6,6 +6,9 @@ docs_extras = [
     'Sphinx',
     'docutils',
     ]
+test_extras = [
+    "nose"
+    ]
 
 setup(name='dontpanic',
       version=version,
@@ -28,6 +31,7 @@ setup(name='dontpanic',
       ],
       extras_require={
           "doc": docs_extras,
+          "test": test_extras,
       },
       entry_points="""
       # -*- Entry points: -*-
